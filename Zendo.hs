@@ -1,7 +1,15 @@
+{-# LANGUAGE NoMonomorphismRestriction #-}
 module Zendo where
+
+import Control.Applicative
+import Test.QuickCheck.Arbitrary
+import Test.QuickCheck.Gen
 
 data DigitFactor = DigitFactor Flip DigitAttribute
   deriving (Eq, Ord, Read, Show)
+
+instance Arbitrary DigitFactor where
+  arbitrary = DigitFactor <$> arbitrary <*> arbitrary
 
 data DigitAttribute
   = TheDigit Digit
@@ -10,6 +18,11 @@ data DigitAttribute
   | Parity Parity
   deriving (Eq, Ord, Read, Show)
 
+instance Arbitrary DigitAttribute where
+  arbitrary = oneof [ TheDigit <$> arbitrary,
+                      DLessThan <$> arbitrary,
+                      DGreaterThan <$> arbitrary,
+                      Parity <$> arbitrary ]
 {-
 data NumberAttribute
   = Parity Parity
@@ -18,6 +31,8 @@ data NumberAttribute
 data Parity = Even | Odd
   deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
+instance Arbitrary Parity where arbitrary = arbitraryBoundedEnum
+
 {-
 data Primality = Prime | Composite
   deriving (Bounded, Enum, Eq, Ord, Read, Show)
@@ -25,6 +40,8 @@ data Primality = Prime | Composite
 
 data Flip = Is | IsNot
   deriving (Bounded, Enum, Eq, Ord, Read, Show)
+
+instance Arbitrary Flip where arbitrary = arbitraryBoundedEnum
 
 data Digit
   = D0
@@ -38,6 +55,8 @@ data Digit
   | D8
   | D9
   deriving (Bounded, Enum, Eq, Ord, Read, Show)
+
+instance Arbitrary Digit where arbitrary = arbitraryBoundedEnum
 
 data GroupAttribute
   = All DigitFactor
@@ -63,8 +82,24 @@ data GroupAttribute
   -}
   deriving (Eq, Ord, Read, Show)
 
+instance Arbitrary GroupAttribute where
+  arbitrary = oneof $
+    [ All <$> arbitrary,
+      None <$> arbitrary,
+      Sum <$> arbitrary,
+      Smallest <$> arbitrary,
+      Largest <$> arbitrary,
+      First <$> arbitrary,
+      Last <$> arbitrary,
+      NoPairs <$> arbitrary,
+      AllPairs <$> arbitrary,
+      ConsecutivePairs <$> arbitrary ]
+
 data GroupFactor = GroupFactor Flip GroupAttribute
   deriving (Eq, Ord, Read, Show)
+
+instance Arbitrary GroupFactor where
+  arbitrary = GroupFactor <$> arbitrary <*> arbitrary
 
 data LimitedComparison
   = Equal
@@ -72,12 +107,22 @@ data LimitedComparison
   | AbsoluteDifferenceOf Int -- 1 to 9
   deriving (Eq, Ord, Read, Show)
 
+instance Arbitrary LimitedComparison where
+  arbitrary = oneof [ pure Equal,
+                      pure Unequal,
+                      AbsoluteDifferenceOf <$> oneof (map pure [1..9]) ]
+
 data Comparison
   = CLessThan
   | CGreaterThan
   | DifferenceOf Int -- 1 to 9 and -1 to -9
   | LimitedComparison LimitedComparison
   deriving (Eq, Ord, Read, Show)
+
+instance Arbitrary Comparison where
+  arbitrary = oneof [ pure CLessThan
+                    , pure CGreaterThan
+                    , DifferenceOf <$> oneof (map pure ([(-1)..(-9)] ++ [1..9])) ]
 
 class English e where
   english :: e -> String
