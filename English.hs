@@ -98,21 +98,21 @@ data ToEachOther = Numbers | Pair | Pairs
 -- pair is unequal
 limited Pair =
      rEqual . word "is" . word "equal"
-  <> rUnequal . word "is" . word "unequal"
+  -- <> rUnequal . word "is" . word "unequal"
   -- <> rAbsoluteDifferenceOf . word "differs" . word "by" . opt (word "exactly") . thenumber [1..9]
   <> rAbsoluteDifferenceOf . word "has" . word "a" . word "difference" . word "of" . thenumber [1..9]
 limited Pairs =
      rEqual . word "are" . word "equal"
-  <> rUnequal . word "are" . word "unequal"
+  -- <> rUnequal . word "are" . word "unequal"
   <> rAbsoluteDifferenceOf . word "have" . word "a" . word "difference" . word "of" . thenumber [1..9]
 limited Numbers =
      rEqual . word "are" . (word "equal" . opt toEachOther <> word "the" . word "same" . opt asEachOther)
-  <> rUnequal . word "are" . (word "unequal" . opt toEachOther <> word "different" . opt fromEachOther)
-  <> rUnequal . word "differ"
+  <> rUnequal . word "are" . (word "unequal" . rNothing . opt toEachOther <> word "different" . rMaybe fromEachOther)
+  -- <> rUnequal . word "differ"
   <> rAbsoluteDifferenceOf . word "differ" . word "by" . opt (word "exactly") . thenumber [1..9]
   <> rAbsoluteDifferenceOf . word "have" . word "a" . word "difference" . word "of" . opt (word "exactly") . thenumber [1..9] where
   toEachOther = word "to" . word "each" . word "other"
-  fromEachOther = word "from" . word "each" . word "other"
+  fromEachOther = rUnit . word "from" . word "each" . word "other"
   asEachOther = word "as" . word "each" . word "other"
 
 digitAttribute =

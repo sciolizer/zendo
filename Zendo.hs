@@ -105,14 +105,16 @@ instance Arbitrary GroupFactor where
 
 data LimitedComparison
   = Equal
-  | Unequal
+  | Unequal (Maybe ())
   | AbsoluteDifferenceOf Int -- 1 to 9
   deriving (Eq, Ord, Read, Show)
 
 instance Arbitrary LimitedComparison where
+  {-
   arbitrary = oneof [ pure Equal,
                       pure Unequal,
                       AbsoluteDifferenceOf <$> oneof (map pure [1..9]) ]
+                      -}
 
 data Comparison
   = CLessThan
