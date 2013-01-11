@@ -1,5 +1,8 @@
 module Main where
 
+import UI.NCurses
+
+import English
 import Input
 
 main = do

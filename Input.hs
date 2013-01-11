@@ -1,6 +1,6 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TypeOperators #-}
-module Main where
+module Input where
 
 import Prelude hiding ((.), id)
 
@@ -26,25 +26,38 @@ prompt
   -> Int
   -> Int
   -> Curses a
-prompt pp rc@(r,c) start end = promptS "" where
-  promptS s = do
-    w <- defaultWindow
-    let (done, right, options) = completions pp s
-    updateWindow w $ do
-      moveCursor (toInteger r) (toInteger c)
-      drawString s
-      forM_ (zip ((if done then ("<enter>":) else id) options) [1..]) $ \(op,rd) -> do
-        moveCursor (toInteger r + rd) (toInteger c)
-        drawString op
-    e <- getEvent w Nothing
-    case e of
-      Just (EventCharacter c) | c >= ' ' && c <= '~' -> promptS (s ++ [c])
-      Just (EventSpecialKey KeyBackspace) -> promptS (initSafe s)
-      Just (EventCharacter '\n') ->
-        case parseStrings pp (words (map toLower s)) of
-          Left _ -> promptS s
-          Right x -> return x
-      _ -> promptS s
+prompt pp rc@(r,c) start end = do
+  setEcho False
+  w <- defaultWindow
+  let black = defaultColorID
+  red <- newColorID ColorRed ColorBlack 1
+  let promptS s = do
+        let (done, right, options') = completions pp s
+            options = sort options'
+        updateWindow w $ do
+          moveCursor (toInteger r) (toInteger c)
+          let (blackPart, redPart) = splitAt right s
+          setColor black
+          drawString blackPart
+          setColor red
+          drawString redPart
+          setColor black
+          drawString "              "
+          forM_ (zip ((if done then ("<enter>":) else id) (options ++ replicate 20 "")) [1..]) $ \(op,rd) -> do
+            moveCursor (toInteger r + rd) (toInteger c)
+            drawString (op ++ "                    ")
+          moveCursor (toInteger r) (toInteger c + toInteger (length s))
+        render
+        e <- getEvent w Nothing
+        case e of
+          Just (EventCharacter c) | c >= ' ' && c <= '~' -> promptS (s ++ [c])
+          Just (EventSpecialKey KeyBackspace) -> promptS (initSafe s)
+          Just (EventCharacter '\n') ->
+            case parseStrings pp (words (map toLower s)) of
+              Left _ -> promptS s
+              Right x -> return x
+          _ -> promptS s
+  promptS ""
 
 completions
   :: PP a
@@ -78,7 +91,7 @@ completions pp input = z where
           (x:_) ->
             case filter (x `isPrefixOf`) cands of
               [] -> Just (correct, cands)
-              fcs -> Just (correct, cands) --) fcs)
+              fcs -> Just (correct, fcs)
       Left p@(ParserError Nothing msgs) -> error $ "no position: " ++ show p
       Right ret -> Nothing
         
