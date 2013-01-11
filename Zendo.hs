@@ -14,7 +14,9 @@ instance Arbitrary DigitFactor where
 data DigitAttribute
   = TheDigit Digit
   | DLessThan Digit -- 1 to 9
+  | DLessThanOrEqual Digit -- 0 to 8
   | DGreaterThan Digit -- 0 to 8
+  | DGreaterThanOrEqual Digit -- 1 to 9
   | Parity Parity
   deriving (Eq, Ord, Read, Show)
 
@@ -60,7 +62,7 @@ instance Arbitrary Digit where arbitrary = arbitraryBoundedEnum
 
 data GroupAttribute
   = All DigitFactor
-  -- | AtLeastOne DigitAttribute -- not all
+  | AtLeastOne DigitFactor -- not all
   -- | AtLeastTwo NumberAttribute
   | None DigitFactor
   | Sum Parity
@@ -70,9 +72,9 @@ data GroupAttribute
   | Last DigitFactor
   -- | Product NumberAttribute
   | NoPairs LimitedComparison
-  -- | AtLeastOnePair Comparison -- not all
+  | AtLeastOnePair LimitedComparison -- Comparison -- not all
   | AllPairs LimitedComparison
-  | ConsecutivePairs Comparison
+  -- | ConsecutivePairs Comparison
   {-
   | LastR RelativeAttribute
   | First NumberAttribute
@@ -92,8 +94,8 @@ instance Arbitrary GroupAttribute where
       First <$> arbitrary,
       Last <$> arbitrary,
       NoPairs <$> arbitrary,
-      AllPairs <$> arbitrary,
-      ConsecutivePairs <$> arbitrary ]
+      AllPairs <$> arbitrary ]
+      -- ConsecutivePairs <$> arbitrary ]
 
 data GroupFactor = GroupFactor Flip GroupAttribute
   deriving (Eq, Ord, Read, Show)
@@ -125,16 +127,63 @@ instance Arbitrary Comparison where
                     , DifferenceOf <$> oneof (map pure ([(-1)..(-9)] ++ [1..9])) ]
 
 class English e where
-  english :: e -> String
+  -- todo: change this to a list of strings so that
+  -- we can classify into something multiple ways
+  english :: e -> Flip -> [String]
 
+class Englishes e where
+  englishes :: e -> Flip -> Plurality -> [String]
+
+xor Is Is = Is
+xor Is IsNot = IsNot
+xor IsNot Is = IsNot
+xor IsNot IsNot = Is
+
+data Plurality = Singular | Plural
+  deriving (Bounded, Enum, Eq, Ord, Read, Show)
+
+{-
 instance English GroupFactor where
-  english (GroupFactor f ga) = prefix ++ english ga where
-    prefix = case f of { Is -> ""; IsNot -> "it is not the case that " }
+  english (GroupFactor f ga) f' = english 
+    case f `xor` f' of
+      Is -> english Is ga
+      IsNot -> undistributed ++ distributed where
+        undistributed = ("it is not the case that " ++ ) <$> english ga Is
+        distributed = english ga IsNot
+
+notAttributed ga =
+  case ga of
+    All df -> atLeast ++ notAll where
+      atLeast = ("at least one number " ++) <$> digitFactor Singular (negated df)
+      notAll = ("not all numbers " ++) <$> digitFactor Plural df
+    None df -> ("at least one number " ++) <$> digitFactor Singular df
+    Sum p -> ("the sum of the numbers " ++) <$> parity Singular (negated p)
+    Smallest df -> do
+      k <- ["smallest number ", "minimum "]
+      ("the " ++ k ++) <$> digitFactor Singular (negated df)
+    Largest df -> do
+      k <- ["largest number ", "maximum "]
+      ("the " ++ k ++) <$> digitFactor Singular (negated df)
+    First df -> ("the first number " ++) <$> digitFactor Singlar
+    -- "begins with"
 
 instance English GroupAttribute where
-  english ga =
+  english ga f =
     case ga of
-      All da -> "all numbers " ++ english da
+      All df ->
+        let q f' = all ++ each
+            all = ("all numbers " ++) <$> englishes df f' Plural
+            each = do
+              e <- ["each", "every"]
+              (e ++ " number " ++) <$> englishes df f' Singular in
+        case f of
+          Is -> q Is
+          IsNot -> undistributed ++ distributed where
+            undistributed = all ++ each
+            all = ("not all numbers " ++) <$> englishes df Is Plural
+            each = ("not every number ") <$> englishes df Is Singular
+            distributed = q IsNot
+      -- next:
       None da -> "none of the numbers " ++ english da
       Sum p -> "the sum of the numbers " ++ english p
       Smallest da -> "the smallest number " ++ english da
@@ -186,3 +235,4 @@ instance English Digit where
       D7 -> "7"
       D8 -> "8"
       D9 -> "9"
+      -}
